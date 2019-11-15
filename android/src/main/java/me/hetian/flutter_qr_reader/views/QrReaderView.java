@@ -9,9 +9,23 @@ import android.view.View;
 
 import com.google.zxing.client.android.camera.CameraManager;
 
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.ChecksumException;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.FormatException;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.PlanarYUVLuminanceSource;
+import com.google.zxing.Result;
+import com.google.zxing.ResultPoint;
+import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.qrcode.QRCodeReader;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.EnumMap;
+import java.util.EnumSet;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
@@ -43,6 +57,8 @@ public class QrReaderView implements PlatformView, QRCodeReaderView.OnQRCodeRead
         _view.setLayoutParams(layoutParams);
         _view.setOnQRCodeReadListener(this);
         _view.setQRDecodingEnabled(true);
+        _view.setLoggingEnabled(true);
+        
         _view.forceAutoFocus();
         int interval = mParams.containsKey(EXTRA_FOCUS_INTERVAL) ? (int) mParams.get(EXTRA_FOCUS_INTERVAL) : 2000;
         _view.setAutofocusInterval(interval);

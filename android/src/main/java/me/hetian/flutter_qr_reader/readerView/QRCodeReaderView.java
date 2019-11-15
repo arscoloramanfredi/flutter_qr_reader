@@ -38,10 +38,16 @@ import com.google.zxing.Result;
 import com.google.zxing.ResultPoint;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeReader;
+import com.google.zxing.MultiFormatReader;
+import com.google.zxing.BarcodeFormat;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.EnumMap;
+import java.util.EnumSet;
 
 import com.google.zxing.client.android.camera.CameraManager;
 
@@ -66,6 +72,7 @@ public class QRCodeReaderView extends SurfaceView
     private static final String TAG = QRCodeReaderView.class.getName();
 
     private QRCodeReader mQRCodeReader;
+    private MultiFormatReader mMultiFormatReader;
     private int mPreviewWidth;
     private int mPreviewHeight;
     private CameraManager mCameraManager;
@@ -135,6 +142,9 @@ public class QRCodeReaderView extends SurfaceView
      * Starts google.zxing.client.android.android.com.google.zxing.client.android.camera preview and decoding
      */
     public void startCamera() {
+        mCameraManager.setPreviewCallback(this);
+        mCameraManager.setDisplayOrientation(getCameraDisplayOrientation());
+
         mCameraManager.startPreview();
     }
 
@@ -230,6 +240,7 @@ public class QRCodeReaderView extends SurfaceView
 
         try {
             mQRCodeReader = new QRCodeReader();
+            mMultiFormatReader = new MultiFormatReader();
             mCameraManager.startPreview();
         } catch (Exception e) {
             SimpleLog.e(TAG, "Exception: " + e.getMessage());
@@ -275,6 +286,8 @@ public class QRCodeReaderView extends SurfaceView
     // Called when google.zxing.client.android.android.com.google.zxing.client.android.camera take a frame
     @Override
     public void onPreviewFrame(byte[] data, Camera camera) {
+        SimpleLog.d(TAG, "onPreviewFrame");
+
         if (!mQrDecodingEnabled || decodeFrameTask != null
                 && (decodeFrameTask.getStatus() == AsyncTask.Status.RUNNING
                 || decodeFrameTask.getStatus() == AsyncTask.Status.PENDING)) {
@@ -357,17 +370,42 @@ public class QRCodeReaderView extends SurfaceView
 
         @Override
         protected Result doInBackground(byte[]... params) {
+            SimpleLog.d(TAG, "doInBackground");
+
             final QRCodeReaderView view = viewRef.get();
             if (view == null) {
                 return null;
             }
 
+            byte[] data = params[0];
+
+            byte[] rotatedData = new byte[data.length];
+            for (int y = 0; y < view.mPreviewHeight; y++) {
+                for (int x = 0; x < view.mPreviewWidth; x++)
+                    rotatedData[x * view.mPreviewHeight + view.mPreviewHeight - y - 1] = data[x + y * view.mPreviewWidth];
+            }
+            int tmp = view.mPreviewWidth;
+            int rotatedWidth = view.mPreviewHeight;
+            int rotatedHeight = tmp;
+
             final PlanarYUVLuminanceSource source =
-                    view.mCameraManager.buildLuminanceSource(params[0], view.mPreviewWidth,
+                    view.mCameraManager.buildLuminanceSource(data, view.mPreviewWidth,
                             view.mPreviewHeight);
+                            
+            final PlanarYUVLuminanceSource rotatedSource =
+                    view.mCameraManager.buildLuminanceSource(rotatedData, rotatedWidth,
+                    rotatedHeight);
 
             final HybridBinarizer hybBin = new HybridBinarizer(source);
+            final HybridBinarizer rotatedHybBin = new HybridBinarizer(rotatedSource);
             final BinaryBitmap bitmap = new BinaryBitmap(hybBin);
+            final BinaryBitmap rotatedBitmap = new BinaryBitmap(rotatedHybBin);
+
+            Map<DecodeHintType, Object> tmpHintsMap = new EnumMap<DecodeHintType, Object>(DecodeHintType.class);
+            tmpHintsMap.put(DecodeHintType.TRY_HARDER, Boolean.TRUE);
+            tmpHintsMap.put(DecodeHintType.POSSIBLE_FORMATS,
+                    EnumSet.allOf(BarcodeFormat.class));
+            tmpHintsMap.put(DecodeHintType.PURE_BARCODE, Boolean.FALSE);
 
             try {
                 return view.mQRCodeReader.decode(bitmap, hintsRef.get());
@@ -375,10 +413,35 @@ public class QRCodeReaderView extends SurfaceView
                 SimpleLog.d(TAG, "ChecksumException", e);
             } catch (NotFoundException e) {
                 SimpleLog.d(TAG, "No QR Code found");
+
+                try{
+                    return view.mMultiFormatReader.decode(bitmap, tmpHintsMap);
+                }
+                catch(Exception ex){
+                    try{
+                        return view.mMultiFormatReader.decode(rotatedBitmap, tmpHintsMap);
+                    }
+                    catch(Exception ex2){
+                        SimpleLog.d(TAG, "Nothing found", ex2);
+                    }
+                }
             } catch (FormatException e) {
                 SimpleLog.d(TAG, "FormatException", e);
+
+                try{
+                    return view.mMultiFormatReader.decode(bitmap, tmpHintsMap);
+                }
+                catch(Exception ex){
+                    try{
+                        return view.mMultiFormatReader.decode(rotatedBitmap, tmpHintsMap);
+                    }
+                    catch(Exception ex2){
+                        SimpleLog.d(TAG, "Nothing found", ex2);
+                    }
+                }
             } finally {
                 view.mQRCodeReader.reset();
+                view.mMultiFormatReader.reset();
             }
 
             return null;

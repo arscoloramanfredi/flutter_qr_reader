@@ -38,7 +38,7 @@ public class QRCodeDecoder {
         allFormats.add(BarcodeFormat.UPC_A);
         allFormats.add(BarcodeFormat.UPC_E);
         allFormats.add(BarcodeFormat.UPC_EAN_EXTENSION);
-        HINTS.put(DecodeHintType.TRY_HARDER, BarcodeFormat.QR_CODE);
+        HINTS.put(DecodeHintType.TRY_HARDER, true); //BarcodeFormat.QR_CODE TBC
         HINTS.put(DecodeHintType.POSSIBLE_FORMATS, allFormats);
         HINTS.put(DecodeHintType.CHARACTER_SET, "utf-8");
     }
