@@ -74,8 +74,8 @@ public final class CameraManager {
 
     if (isOpen()) {
       boolean mustRestart = previewing;
-      if(mustRestart)
-        stopPreview();
+      
+      stopPreview();
 
       openCamera.getCamera().setDisplayOrientation(degrees);
 
