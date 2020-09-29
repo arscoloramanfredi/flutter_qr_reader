@@ -73,7 +73,14 @@ public final class CameraManager {
     this.displayOrientation = degrees;
 
     if (isOpen()) {
+      boolean mustRestart = previewing;
+      if(mustRestart)
+        stopPreview();
+
       openCamera.getCamera().setDisplayOrientation(degrees);
+
+      if(mustRestart)
+        startPreview();
     }
   }
 
@@ -110,6 +117,8 @@ public final class CameraManager {
       }
       openCamera = theCamera;
     }
+
+    theCamera.getCamera().stopPreview();
     theCamera.getCamera().setPreviewDisplay(holder);
     theCamera.getCamera().setPreviewCallback(previewCallback);
     theCamera.getCamera().setDisplayOrientation(displayOrientation);

@@ -142,6 +142,8 @@ public class QRCodeReaderView extends SurfaceView
      * Starts google.zxing.client.android.android.com.google.zxing.client.android.camera preview and decoding
      */
     public void startCamera() {
+        mCameraManager.stopPreview();
+
         mCameraManager.setPreviewCallback(this);
         mCameraManager.setDisplayOrientation(getCameraDisplayOrientation());
 
